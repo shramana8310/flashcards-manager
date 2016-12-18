@@ -1,124 +1,189 @@
-from tkinter import Tk, messagebox, simpledialog, filedialog
-import os
 import sys
-import re
-import urllib.request
-import urllib.parse
-import urllib.error
-import json
+import os
 import csv
-import time
-import traceback
+import pystardict
+from PyQt5.QtWidgets import QDialog, QPushButton, QLineEdit, QDialogButtonBox, \
+    QTextEdit, QGridLayout, QFileDialog, QMessageBox, QProgressDialog, QApplication
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
-def request_glosbe_translate(phrase, lan_from, lan_dest, include_examples=True):
-    query = {
-        'from' : lan_from,
-        'dest' : lan_dest,
-        'phrase' : phrase,
-        'tm' : 'true' if include_examples else 'false',
-        'format' : 'json'
-    }
-    glosbe_url = 'https://glosbe.com/gapi/'
-    glosbe_function = 'translate'
-    query_string = urllib.parse.urlencode(query)
-    url = glosbe_url + glosbe_function + '?' + query_string
-    response = urllib.request.urlopen(url)
-    data = json.loads(response.read().decode('utf-8'))
-    if len(data['tuc']) > 0:
-        return data
-    else:
-        return None
 
-def list_from_data(original_phrase, data):
-    lst = []
-    try:
-        separator = '<br />'
-        phrase = data['phrase']
-        lst.append(phrase)
-        meanings = []
-        for idx, item in enumerate(data['tuc']):
-            if idx == 10:
-                break
+class PrototypeDialog(QDialog):
+
+    optionsChanged = pyqtSignal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.options = {'word_list': '', 'stardict': '', 'flashcards': ''}
+
+        word_list_btn = QPushButton('단어 목록 파일')
+        self.word_list_path = QLineEdit()
+        self.word_list_path.setReadOnly(True)
+
+        stardict_btn = QPushButton('스타딕 파일')
+        self.stardict_path = QLineEdit()
+        self.stardict_path.setReadOnly(True)
+
+        flashcards_btn = QPushButton('단어장 파일')
+        self.flashcards_path = QLineEdit()
+        self.flashcards_path.setReadOnly(True)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok |
+                                      QDialogButtonBox.Close)
+
+        help_message = self.load_help_message()
+        help_message_area = QTextEdit()
+        help_message_area.setText(help_message)
+        help_message_area.setReadOnly(True)
+
+        layout = QGridLayout()
+
+        layout.addWidget(word_list_btn, 0, 0)
+        layout.addWidget(self.word_list_path, 0, 1)
+        layout.addWidget(stardict_btn, 1, 0)
+        layout.addWidget(self.stardict_path, 1, 1)
+        layout.addWidget(flashcards_btn, 2, 0)
+        layout.addWidget(self.flashcards_path, 2, 1)
+        layout.addWidget(help_message_area, 3, 0, 1, 2, Qt.AlignCenter)
+        layout.addWidget(button_box, 4, 0, 1, 2, Qt.AlignCenter)
+
+        self.setLayout(layout)
+
+        word_list_btn.clicked.connect(self.set_word_list_file)
+        stardict_btn.clicked.connect(self.set_stardict_file)
+        flashcards_btn.clicked.connect(self.set_flashcards_file)
+        self.optionsChanged.connect(self.update_state)
+        button_box.button(QDialogButtonBox.Ok).clicked.connect(
+            self.validate_and_work)
+        button_box.button(QDialogButtonBox.Close).clicked.connect(
+            self.ask_and_close)
+
+        self.setWindowTitle('Flashcards Manager 시험판')
+
+    def load_help_message(self):
+        try:
+            with open('./res/help.txt', encoding='utf-8') as fi:
+                return fi.read()
+        except IOError:
+            pass
+
+    def set_word_list_file(self):
+        file_name = QFileDialog.getOpenFileName(self, caption='단어 목록 파일', filter='텍스트 파일 (*.txt)',
+                                                directory=os.path.expanduser('~'))[0]
+        self.options['word_list'] = file_name
+        self.optionsChanged.emit()
+
+    def set_stardict_file(self):
+        file_name = QFileDialog.getOpenFileName(self, caption='스타딕 파일', filter='스타딕 파일 (*.ifo)',
+                                                directory=os.path.expanduser('~'))[0]
+        self.options['stardict'] = file_name[:-4]
+        self.optionsChanged.emit()
+
+    def set_flashcards_file(self):
+        file_name = QFileDialog.getSaveFileName(self, caption='단어장 파일', filter='텍스트 파일 (*.txt)',
+                                                directory=os.path.expanduser('~'))[0]
+        self.options['flashcards'] = file_name
+        self.optionsChanged.emit()
+
+    def update_state(self):
+        self.word_list_path.setText(self.options['word_list'])
+        self.stardict_path.setText(self.options['stardict'])
+        self.flashcards_path.setText(self.options['flashcards'])
+
+    def validate_and_work(self):
+        for value in self.options.values():
+            if not value:
+                QMessageBox.warning(self, '파일 지정', '파일을 지정하십시오.')
+                return
+        if self.options['word_list'] == self.options['flashcards']:
+            QMessageBox.warning(self, '파일 지정 오류', '단어 목록 파일과 단어장 파일은 다른 파일이어야 합니다.')
+            return
+        try:
+            with open(self.options['word_list'], encoding='utf-8') as word_list_file:
+                word_list = [line.strip() for line in word_list_file.readlines()]
+            stardict = pystardict.Dictionary(self.options['stardict'])
+        except Exception as err:
+            QMessageBox.warning(self, 'Error', str(err))
+        else:
+            answer = QMessageBox.question(self, '확인',
+                                          '작업을 진행해도 좋습니까?\n\n'
+                                          '단어 목록: {word_list}\n'
+                                          '스타딕: {stardict}\n'
+                                          '단어장: {flashcards}'.format(
+                                              **self.options))
+            if answer == QMessageBox.Yes:
+                self.worker = PrototypeWorker(word_list, stardict, self.options['flashcards'])
+
+                self.progress = QProgressDialog()
+                self.progress.setWindowTitle('작업중...')
+                self.progress.setRange(0, len(word_list) - 1)
+                self.progress.setWindowModality(Qt.WindowModal)
+
+                self.progress.canceled.connect(self.worker.requestInterruption)
+                self.worker.notifyProgress.connect(self.progress.setValue)
+                self.worker.resultReady.connect(self.handle_result)
+                self.worker.finished.connect(self.worker.deleteLater)
+
+                self.progress.show()
+                self.worker.start()
+
+    def handle_result(self, result):
+        if self.progress.wasCanceled():
+            QMessageBox.information(self, '작업 중단', '작업을 중단했습니다.\n\n'
+                                                   '성공: {success}\n'
+                                                   '실패: {failure}'.format(**result))
             try:
-                meanings.append(item['phrase']['text'])
-            except (TypeError, IndexError, KeyError):
-                continue
-        lst.append(separator.join(meanings))
-        examples = []
-        for idx, item in enumerate(data['examples']):
-            if idx == 3:
-                break
-            try:
-                examples.append((item['first'], item['second']))
-            except (TypeError, IndexError, KeyError):
-                continue
-        examples_in_lan_from = [first for first, second in examples]
-        examples_in_lan_dest = [second for first, second in examples]
-        lst.append((separator + separator).join(examples_in_lan_from))
-        lst.append((separator + separator).join(examples_in_lan_dest))
-        return lst
-    except (TypeError, IndexError, KeyError):
-        return lst
-
-def do_work(lan_from, lan_dest, phrases, out_filename):
-    result = {'success' : 0, 'failure' : 0, 'started_at' : time.time()}
-    with open(out_filename, 'w', encoding='utf-8', newline='\n') as fo:
-        writer = csv.writer(fo, delimiter='\t')
-        writer.writerow(['Text 1', 'Text 2', 'Text 3', 'Text 4'])
-        for phrase in phrases:
-            data = request_glosbe_translate(phrase, lan_from, lan_dest)
-            lst = list_from_data(phrase, data)
-            if len(lst) >= 2 and len(lst[1]) > 0:
-                result['success'] += 1
-            else:
-                result['failure'] += 1
-            writer.writerow(lst)
-    result['finished_at'] = time.time()
-    result['elapsed_time'] = result['finished_at'] - result['started_at']
-    return result
-
-def read_phrases(filename):
-    with open(filename, 'r', encoding='utf-8') as f:
-        alist = [line.rstrip() for line in f if len(line.rstrip()) > 0]
-    return alist
-
-def lan_code_input_routine():
-    def aux_input_routine(title, message):
-        while True:
-            lan_code = simpledialog.askstring(title, message)
-            try:
-                if not re.match(r'^[a-z]{3}$', lan_code):
-                    messagebox.showerror('잘못된 언어 코드', '잘못된 언어 코드입니다. 언어 코드는 다음 주소를 참고하세요.\nhttp://www-01.sil.org/iso639-3/codes.asp')
-                else:
-                    return lan_code
-            except:
+                self.progress.close()
+            except Exception:
                 pass
-    lan_from = aux_input_routine('언어 코드 입력', '검색 대상 언어 코드 (ISO 639-3) 세자리를 입력하십시오.\n'
-        '예: 영단어의 경우 "eng"를 입력')
-    lan_dest = aux_input_routine('뜻풀이 언어 코드 입력', '뜻풀이 언어 코드 (ISO 639-3) 세자리를 입력하십시오.\n'
-        '예: 우리말 뜻풀이의 경우 "kor"을 입력')
-    return (lan_from, lan_dest)
+        else:
+            QMessageBox.information(self, '작업 완료', '작업을 완료했습니다.\n\n'
+                                                   '성공: {success}\n'
+                                                   '실패: {failure}'.format(**result))
+
+    def reject(self):
+        self.ask_and_close()
+
+    def ask_and_close(self):
+        answer = QMessageBox.question(self, '종료', '정말로 종료하시겠습니까?')
+        if answer == QMessageBox.Yes:
+            self.done(0)
+
+
+class PrototypeWorker(QThread):
+
+    notifyProgress = pyqtSignal(int)
+    resultReady = pyqtSignal(dict)
+
+    def __init__(self, word_list, stardict, flashcards_path):
+        QThread.__init__(self)
+        self.word_list = word_list
+        self.stardict = stardict
+        self.flashcards_path = flashcards_path
+        self.result = {'success': 0, 'failure': 0}
+
+    def run(self):
+        with open(self.flashcards_path, 'w', encoding='utf-8', newline='\n') as fo:
+            writer = csv.writer(fo, delimiter='\t')
+            writer.writerow(['Text 1', 'Text 2'])
+            for i, word in enumerate(self.word_list):
+                translated = ''
+                if self.isInterruptionRequested():
+                    break
+                try:
+                    translated = self.stardict[word]
+                    self.result['success'] += 1
+                except KeyError:
+                    self.result['failure'] += 1
+                writer.writerow([word, translated])
+                self.notifyProgress.emit(i)
+        self.resultReady.emit(self.result)
+
 
 def main():
-    Tk().withdraw()
-    try:
-        lan_from, lan_dest = lan_code_input_routine()
-        messagebox.showinfo('입력 파일 선택', '단어 목록 텍스트 파일을 선택하십시오.')
-        in_filename = filedialog.askopenfilename()
-        phrases = read_phrases(in_filename)
-        messagebox.showinfo('단어장 파일 선택', '검색 결과가 저장될 파일을 선택하십시오.')
-        out_filename = filedialog.asksaveasfilename(filetypes=[('Text files', '*.txt')], 
-            initialfile='flashcards.txt')
-        if len(phrases) > 50:
-            messagebox.showinfo('알림', '인터넷에서 자료를 가져오기 때문에 단어가 많으면 시간이 제법 걸립니다.\n(접속이 원활한 경우 50개당 1분 정도 소요)')
-        result = do_work(lan_from, lan_dest, phrases, out_filename)
-        messagebox.showinfo('결과', '성공: {success}\n실패: {failure}\n소요시간: {elapsed_time:.2f}초\n\n프로그램을 종료합니다.'.format(**result))
-    except urllib.error.HTTPError as err:
-        if err.getcode() == 429:
-            messagebox.showerror(type(err), '지나친 서버 요청으로 접근이 차단되었습니다. 나중에 다시 시도해보세요.')
-            sys.exit(1)
-    except Exception as err:
-        messagebox.showerror(type(err), traceback.format_exc())
-        sys.exit(1)
+    app = QApplication(sys.argv)
+    dialog = PrototypeDialog()
+    dialog.show()
+    sys.exit(app.exec_())
 
 main()

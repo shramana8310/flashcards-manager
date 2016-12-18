@@ -1,15 +1,30 @@
 from cx_Freeze import setup, Executable
-import os
+import sys
 
-os.environ['TCL_LIBRARY'] = r"C:\Users\shram\AppData\Local\Programs\Python\Python35-32\tcl\tcl8.6"
-os.environ['TK_LIBRARY'] = r"C:\Users\shram\AppData\Local\Programs\Python\Python35-32\tcl\tk8.6"
+base = 'Win32GUI' if sys.platform == 'win32' else None
+executables = Executable(
+    script='PyFlashcardsManager.pyw',
+    base=base,
+    shortcutName='Flashcards Manager',
+    shortcutDir='DesktopFolder'
+)
 
-includes      = ["tkinter"]
-include_files = [r"C:\Users\shram\AppData\Local\Programs\Python\Python35-32\DLLs\tcl86t.dll", \
-                 r"C:\Users\shram\AppData\Local\Programs\Python\Python35-32\DLLs\tk86t.dll"]
+build_exe_options = {
+    'include_files': [r'res/'],
+}
+
+bdist_msi_options = {
+    'upgrade_code': '{EF063422-3DDC-4C70-9FB9-1D8591E2D561}'
+}
+
 setup(
-    name = "PyFlashcardsManager",
-    version = "0.0.1",
-    options = {"build_exe": {"includes": includes, "include_files": include_files}},
-    executables = [Executable("PyFlashcardsManager.py")]
+    name='Flashcards Manager',
+    version='0.0.1',
+    description='A simple GUI application that generates flashcards',
+    author='shramana',
+    options={
+        'build_exe': build_exe_options,
+        'build_msi': bdist_msi_options
+    },
+    executables=[executables]
 )
