@@ -25,13 +25,13 @@ class DictionaryLoader(QThread):
             except ValueError as err:
                 warnings.warn(err.message)
         self.dictionaries.sort()
-        self.signal.emit()
+        self.signal.emit(True)
 
 
 class FlashcardsManagerMainWindow(QMainWindow):
 
     file_available = pyqtSignal(bool)
-    dictionaries_loaded = pyqtSignal()
+    dictionaries_loaded = pyqtSignal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -104,13 +104,13 @@ class FlashcardsManagerMainWindow(QMainWindow):
         for action in file_available_action_list:
             self.file_available.connect(action.setEnabled)
 
-        self.dictionaries_loaded.connect(lambda: self.statusBar().showMessage('Dictionaries loaded.', MSG_DURATION))
+        self.dictionaries_loaded.connect(lambda _: self.statusBar().showMessage('Dictionaries loaded.', MSG_DURATION))
         dictionaries_loaded_action_list = [
             pref_dicts_action,
         ]
         for action in dictionaries_loaded_action_list:
             action.setEnabled(False)
-            self.dictionaries_loaded.connect(lambda: action.setEnabled(True))
+            self.dictionaries_loaded.connect(lambda _: action.setEnabled(True))
 
         settings = QSettings()
         self.restoreGeometry(settings.value('MainWindow/Geometry', QByteArray()))
