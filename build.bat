@@ -1,4 +1,5 @@
 @echo off
+pyrcc5 -o qrc_resources.py resources.qrc
 python setup.py build
 mkdir ".\build\Flashcards Manager"
 mkdir ".\build\Flashcards Manager\collections"
