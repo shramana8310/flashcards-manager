@@ -1,4 +1,4 @@
-import os, warnings
+import os
 import pystardict
 
 STARDICT_EXTENSIONS = ['.idx', '.ifo', '.dict', '.dz', '.gz']
@@ -55,7 +55,8 @@ class DictionaryContainer:
                     if dictionary not in self.dictionaries:
                         self.add(dictionary)
                 except ValueError as err:
-                    warnings.warn(err.message)
+                    # TODO need some better way to handle this
+                    print(str(err))
         else:
             loose_candidates = set()
             for filename in os.listdir(path):
@@ -68,4 +69,5 @@ class DictionaryContainer:
                     if dictionary not in self.dictionaries:
                         self.add(dictionary)
                 except ValueError as err:
-                    warnings.warn(err.message)
+                    # TODO need some better way to handle this
+                    print(str(err))

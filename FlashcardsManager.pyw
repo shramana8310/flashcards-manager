@@ -1,4 +1,4 @@
-import sys, warnings
+import sys
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -22,8 +22,8 @@ class DictionaryLoader(QThread):
             try:
                 dictionary = pystardict.Dictionary(dict_path)
                 self.dictionaries.add(dictionary)
-            except ValueError as err:
-                warnings.warn(err.message)
+            except Exception as err:
+                print(str(err))
         self.dictionaries.sort()
         self.signal.emit(True)
 
