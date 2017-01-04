@@ -169,7 +169,7 @@ class FlashcardsManagerMainWindow(QMainWindow):
             self.dictionary_loader.finished.connect(self.dictionary_loader.deleteLater)
             self.dictionary_loader.start()
         else:
-            self.dictionaries_loaded.emit()
+            self.dictionaries_loaded.emit(True)
 
     def load_initial_file(self):
         settings = QSettings()
