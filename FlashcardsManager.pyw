@@ -23,6 +23,7 @@ class DictionaryLoader(QThread):
                 dictionary = pystardict.Dictionary(dict_path)
                 self.dictionaries.add(dictionary)
             except Exception as err:
+                # TODO need some better way to handle this
                 print(str(err))
         self.dictionaries.sort()
         self.signal.emit(True)
