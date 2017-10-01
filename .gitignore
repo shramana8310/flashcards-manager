@@ -1,0 +1,7 @@
+**/debug/
+**/release/
+*.o
+*.exe
+Makefile
+Makefile.Debug
+Makefile.Release
