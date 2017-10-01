@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = Flashcards-Manager
+TARGET = flashcards-manager
 INCLUDEPATH += .
 
 DEFINES += QT_DEPRECATED_WARNINGS
