@@ -157,7 +157,7 @@ void StarDict::init(const QDir &directory, const QString& baseName)
             QString headword = QString::fromUtf8(headwordBuffer);
 
             int offset_size = sizeof(quint32);
-            char* offset_buf = new char[sizeof(quint32)];
+            char* offset_buf = new char[offset_size];
             if (gzread(idxFileCompressed, offset_buf, offset_size) != offset_size) {
                 delete[] offset_buf;
                 throw StarDictInitializationFailedException();
