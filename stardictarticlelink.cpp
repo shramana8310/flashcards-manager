@@ -21,11 +21,13 @@ QString StarDictArticleLink::getArticle() const
         if (gzseek(dictFileCompressed, _offset, SEEK_SET) != (int) _offset) {
             throw StarDictInvalidDictFileException();
         }
-        char buf[_size];
+        char* buf = new char[_size];
         if (gzread(dictFileCompressed, buf, _size) != (int) _size) {
+            delete[] buf;
             throw StarDictInvalidDictFileException();
         }
         gzclose(dictFileCompressed);
+        delete[] buf;
         QString article = QString::fromUtf8(buf);
         return article;
     } else {

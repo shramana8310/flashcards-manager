@@ -157,18 +157,22 @@ void StarDict::init(const QDir &directory, const QString& baseName)
             QString headword = QString::fromUtf8(headwordBuffer);
 
             int offset_size = sizeof(quint32);
-            char offset_buf[offset_size];
+            char* offset_buf = new char[sizeof(quint32)];
             if (gzread(idxFileCompressed, offset_buf, offset_size) != offset_size) {
+                delete[] offset_buf;
                 throw StarDictInitializationFailedException();
             }
             quint32 offset = qFromBigEndian<quint32>(offset_buf);
+            delete[] offset_buf;
 
             int size_size = sizeof(quint32);
-            char size_buf[size_size];
+            char* size_buf = new char[size_size];
             if (gzread(idxFileCompressed, size_buf, size_size) != size_size) {
+                delete[] size_buf;
                 throw StarDictInitializationFailedException();
             }
             quint32 size = qFromBigEndian<quint32>(size_buf);
+            delete[] size_buf;
 
             StarDictArticleLink articleLink;
             articleLink.setDictFileName(_dictFile.fileName());
