@@ -1,11 +1,11 @@
-#include <QApplication>
+#include "fm_dialog.h"
 
-#include "fm_proto_dialog.h"
+#include <QApplication>
 
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    FMProtoDialog dialog;
+    FlashcardsManagerDialog dialog;
     dialog.show();
     return app.exec();
 }

@@ -1,14 +1,16 @@
-#ifndef FM_PROTO_DIALOG_H
-#define FM_PROTO_DIALOG_H
+#ifndef FM_DIALOG_H
+#define FM_DIALOG_H
+
+#include "fm_option.h"
 
 #include <QDialog>
 #include <QPushButton>
 #include <QListWidget>
 
-class FMProtoDialog : public QDialog {
+class FlashcardsManagerDialog : public QDialog {
     Q_OBJECT
 public:
-    FMProtoDialog(QWidget* parent = Q_NULLPTR);
+    FlashcardsManagerDialog(QWidget* parent = Q_NULLPTR);
 
 protected:
     virtual void closeEvent(QCloseEvent*) override;
@@ -23,6 +25,7 @@ private slots:
     void upSelectedDictionary();
     void downSelectedDictionary();
     void dictionarySelectionChanged();
+    void optionButtonClicked();
     void execute();
 
 private:
@@ -40,6 +43,9 @@ private:
 
     QPushButton* executeButton;
     QPushButton* closeButton;
+    QPushButton* optionButton;
+
+    FlashcardsManagerOption* option;
 };
 
-#endif
+#endif // FM_DIALOG_H

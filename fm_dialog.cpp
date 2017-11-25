@@ -1,11 +1,12 @@
+#include "fm_dialog.h"
+#include "fm_workerdialog.h"
+#include "fm_option.h"
+#include "fm_optiondialog.h"
+
 #include <QtCore>
-#include <QtGui>
 #include <QtWidgets>
 
-#include "fm_proto_dialog.h"
-#include "fm_proto_workerdialog.h"
-
-FMProtoDialog::FMProtoDialog(QWidget* parent) : QDialog(parent)
+FlashcardsManagerDialog::FlashcardsManagerDialog(QWidget* parent) : QDialog(parent)
 {
     // initialize
     wordList = new QListWidget;
@@ -22,45 +23,47 @@ FMProtoDialog::FMProtoDialog(QWidget* parent) : QDialog(parent)
 
     executeButton = new QPushButton(tr("Execute"));
     closeButton = new QPushButton(tr("Close"));
+    optionButton = new QPushButton(tr("Option"));
 
-    // setup widgets
-    executeButton->setDefault(true);
+    option = new FlashcardsManagerOption();
 
     // wire up
     connect(wordLineEdit, SIGNAL(textChanged(const QString&)),
-        this, SLOT(wordLineEditTextChanged(const QString&)));
-    connect(closeButton, SIGNAL(clicked()), 
-        this, SLOT(close()));
-    connect(addWordButton, SIGNAL(clicked()), 
-        this, SLOT(addWord()));
-    connect(wordLineEdit, SIGNAL(returnPressed()), 
-        this, SLOT(addWord()));
-    connect(clearWordListButton, SIGNAL(clicked()), 
-        wordList, SLOT(clear()));
+            this, SLOT(wordLineEditTextChanged(const QString&)));
+    connect(closeButton, SIGNAL(clicked()),
+            this, SLOT(close()));
+    connect(addWordButton, SIGNAL(clicked()),
+            this, SLOT(addWord()));
+    connect(wordLineEdit, SIGNAL(returnPressed()),
+            this, SLOT(addWord()));
     connect(clearWordListButton, SIGNAL(clicked()),
-        this, SLOT(checkForExecution()));
-    connect(addWordListFileButton, SIGNAL(clicked()), 
-        this, SLOT(addWordFromFile()));
-    connect(addDictionaryButton, SIGNAL(clicked()), 
-        this, SLOT(addDictionary()));
+            wordList, SLOT(clear()));
+    connect(clearWordListButton, SIGNAL(clicked()),
+            this, SLOT(checkForExecution()));
+    connect(addWordListFileButton, SIGNAL(clicked()),
+            this, SLOT(addWordFromFile()));
+    connect(addDictionaryButton, SIGNAL(clicked()),
+            this, SLOT(addDictionary()));
     connect(removeDictionaryButton, SIGNAL(clicked()),
-        this, SLOT(removeSelectedDictionary()));
+            this, SLOT(removeSelectedDictionary()));
     connect(upDictionaryButton, SIGNAL(clicked()),
-        this, SLOT(upSelectedDictionary()));
+            this, SLOT(upSelectedDictionary()));
     connect(downDictionaryButton, SIGNAL(clicked()),
-        this, SLOT(downSelectedDictionary()));
+            this, SLOT(downSelectedDictionary()));
     connect(dictionaryList, SIGNAL(itemSelectionChanged()),
-        this, SLOT(dictionarySelectionChanged()));
+            this, SLOT(dictionarySelectionChanged()));
     connect(wordList->model(), SIGNAL(rowsInserted(QModelIndex,int,int)),
-        this, SLOT(checkForExecution()));
+            this, SLOT(checkForExecution()));
     connect(wordList->model(), SIGNAL(rowsRemoved(QModelIndex,int,int)),
-        this, SLOT(checkForExecution()));
+            this, SLOT(checkForExecution()));
     connect(dictionaryList->model(), SIGNAL(rowsInserted(QModelIndex,int,int)),
-        this, SLOT(checkForExecution()));
+            this, SLOT(checkForExecution()));
     connect(dictionaryList->model(), SIGNAL(rowsRemoved(QModelIndex,int,int)),
-        this, SLOT(checkForExecution()));
+            this, SLOT(checkForExecution()));
     connect(executeButton, SIGNAL(clicked()),
-        this, SLOT(execute()));
+            this, SLOT(execute()));
+    connect(optionButton, SIGNAL(clicked()),
+            this, SLOT(optionButtonClicked()));
 
     // layout
     QVBoxLayout* buttonLayout = new QVBoxLayout;
@@ -98,6 +101,7 @@ FMProtoDialog::FMProtoDialog(QWidget* parent) : QDialog(parent)
     buttonLayout->addWidget(executeButton);
     buttonLayout->addWidget(closeButton);
     buttonLayout->addStretch();
+    buttonLayout->addWidget(optionButton);
 
     QHBoxLayout* layout = new QHBoxLayout;
     layout->addWidget(wordListGroup);
@@ -105,7 +109,7 @@ FMProtoDialog::FMProtoDialog(QWidget* parent) : QDialog(parent)
     layout->addLayout(buttonLayout);
 
     setLayout(layout);
-    setWindowTitle(tr("Flashcards Generator prototype"));
+    setWindowTitle(tr("Flashcards Generator"));
 
     // manual check
     removeDictionaryButton->setEnabled(false);
@@ -114,17 +118,17 @@ FMProtoDialog::FMProtoDialog(QWidget* parent) : QDialog(parent)
     executeButton->setEnabled(false);
 }
 
-void FMProtoDialog::wordLineEditTextChanged(const QString& text)
+void FlashcardsManagerDialog::wordLineEditTextChanged(const QString& text)
 {
     addWordButton->setEnabled(!text.isEmpty());
 }
 
-void FMProtoDialog::checkForExecution()
+void FlashcardsManagerDialog::checkForExecution()
 {
     executeButton->setEnabled(wordList->count() > 0 && dictionaryList->count() > 0);
 }
 
-void FMProtoDialog::addWord()
+void FlashcardsManagerDialog::addWord()
 {
     const QString& text = wordLineEdit->text();
     if (!text.isEmpty()) {
@@ -135,7 +139,7 @@ void FMProtoDialog::addWord()
     }
 }
 
-void FMProtoDialog::addWordFromFile()
+void FlashcardsManagerDialog::addWordFromFile()
 {
     const QString& fileName = QFileDialog::getOpenFileName(this, tr("Open File"), 
         ".", tr("Text files (*.txt)"));
@@ -152,7 +156,7 @@ void FMProtoDialog::addWordFromFile()
     }
 }
 
-void FMProtoDialog::closeEvent(QCloseEvent* event)
+void FlashcardsManagerDialog::closeEvent(QCloseEvent* event)
 {
     int ret = QMessageBox::question(this, tr("Close"), tr("Are you sure?"));
     if (ret == QMessageBox::Yes) {
@@ -162,10 +166,10 @@ void FMProtoDialog::closeEvent(QCloseEvent* event)
     }
 }
 
-void FMProtoDialog::addDictionary()
+void FlashcardsManagerDialog::addDictionary()
 {
-    const QString& fileName = QFileDialog::getOpenFileName(this, tr("Open File"), 
-        ".", tr("TSV files (*.tsv)"));
+    const QString& fileName =
+            QFileDialog::getOpenFileName(this, tr("Open File"), ".", tr("StarDict dictionary file (*.ifo)"));
     if (!fileName.isNull()) {
         QFile file(fileName);
         if (file.exists()) {
@@ -175,12 +179,12 @@ void FMProtoDialog::addDictionary()
     }
 }
 
-void FMProtoDialog::removeSelectedDictionary()
+void FlashcardsManagerDialog::removeSelectedDictionary()
 {
     dictionaryList->takeItem(dictionaryList->currentRow());
 }
 
-void FMProtoDialog::upSelectedDictionary()
+void FlashcardsManagerDialog::upSelectedDictionary()
 {
     int currentIndex = dictionaryList->currentRow();
     QListWidgetItem* currentItem = dictionaryList->takeItem(currentIndex);
@@ -188,7 +192,7 @@ void FMProtoDialog::upSelectedDictionary()
     dictionaryList->setCurrentRow(currentIndex - 1);
 }
 
-void FMProtoDialog::downSelectedDictionary()
+void FlashcardsManagerDialog::downSelectedDictionary()
 {
     int currentIndex = dictionaryList->currentRow();
     QListWidgetItem* currentItem = dictionaryList->takeItem(currentIndex);
@@ -196,7 +200,7 @@ void FMProtoDialog::downSelectedDictionary()
     dictionaryList->setCurrentRow(currentIndex + 1);
 }
 
-void FMProtoDialog::dictionarySelectionChanged()
+void FlashcardsManagerDialog::dictionarySelectionChanged()
 {
     bool empty = dictionaryList->selectedItems().isEmpty();
     int currentRow = dictionaryList->currentRow();
@@ -205,10 +209,17 @@ void FMProtoDialog::dictionarySelectionChanged()
     downDictionaryButton->setEnabled(!empty && currentRow < dictionaryList->count() - 1);
 }
 
-void FMProtoDialog::execute()
+void FlashcardsManagerDialog::optionButtonClicked()
 {
-    const QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),
-          "./untitled.tsv", tr("TSV Files (*.tsv)"));
+    FlashcardsManagerOptionDialog* dialog = new FlashcardsManagerOptionDialog(option);
+    dialog->setModal(true);
+    dialog->show();
+}
+
+void FlashcardsManagerDialog::execute()
+{
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save File"),
+          "./untitled.txt", tr("Text Files (*.txt)"));
     if (!fileName.isNull()) {
         QList<QString> wordListReq;
         for (int i = 0; i < wordList->count(); ++i)
@@ -216,8 +227,14 @@ void FMProtoDialog::execute()
         QList<QString> dictionaryListReq;
         for (int i = 0; i < dictionaryList->count(); ++i)
             dictionaryListReq.append(dictionaryList->item(i)->text());
-        FMProtoWorkRequest req (wordListReq, dictionaryListReq, fileName);
-        FMProtoWorkerDialog* dialog = new FMProtoWorkerDialog(req);
+
+        FlashcardsManagerWorkRequest req;
+        req.setFlashcards(fileName);
+        req.setDictionaryList(dictionaryListReq);
+        req.setWordList(wordListReq);
+        req.setOption(*option);
+
+        FlashcardsManagerWorkerDialog* dialog = new FlashcardsManagerWorkerDialog(req);
         dialog->show();
     }
 }

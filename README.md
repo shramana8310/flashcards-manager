@@ -1,6 +1,2 @@
 # flashcards-manager
-A desktop GUI application that generates customized flashcards. Started as a PyQt app. Now being redeveloped using C++.
-
-## TODO
-* Implement an efficient, easy-to-use StarDict parser in pure C++ with minimum dependencies.
-* UI design.
+Flashcards manager is a Qt application that can generate a TSV-formatted flashcards file. The program will ask you to enter a list of words and specify a list of StarDict dictionaries to look them up. You can use the generated TSV file in such apps as [Flashcards Deluxe](http://flashcardsdeluxe.com/flashcards/) and [Anki](https://apps.ankiweb.net/).
