@@ -147,6 +147,7 @@ void FlashcardsManagerDialog::addWordFromFile()
         QFile file(fileName);
         if (file.open(QFile::ReadOnly)) {
             QTextStream stream(&file);
+            stream.setCodec("UTF-8");
             QString line;
             while (stream.readLineInto(&line)) {
                 wordList->addItem(line);
